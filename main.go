@@ -21,6 +21,7 @@ func main() {
 			cmd.Run,
 			cmd.Setup,
 			cmd.Stop,
+			cmd.Net,
 		},
 	}
 
