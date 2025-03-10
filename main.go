@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	cli := &cli.App{
+	app := &cli.App{
 		Name:  "mini_docker",
 		Usage: "mini_docker is simple docker clone",
 		Commands: []*cli.Command{
@@ -24,7 +24,7 @@ func main() {
 		},
 	}
 
-	err := cli.Run(os.Args)
+	err := app.Run(os.Args)
 	if err != nil {
 		slog.Error("run mini_docker error", "err", err)
 	}
