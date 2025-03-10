@@ -83,8 +83,11 @@ func (c *container) saveMetadata() {
 
 func Run(s *Setting) {
 	id := uuid.New()
-	uuidBytes := id[:]
-	c := &container{Setting: s, Id: base64.RawURLEncoding.EncodeToString(uuidBytes), CreateTime: time.Now()}
+	c := &container{
+		Id:         base64.RawURLEncoding.EncodeToString(id[:]),
+		CreateTime: time.Now(),
+		Setting:    s,
+	}
 	c.setupOverlayFS()
 	c.loadImage()
 	c.startChild()
