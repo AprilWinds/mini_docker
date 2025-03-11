@@ -118,7 +118,7 @@ func parseEnv(c *cli.Context) []string {
 
 func parsePort(c *cli.Context) []string {
 	portStr := c.String("p")
-	if portStr != "" && !strings.Contains(portStr, ":") {
+	if portStr != "" && strings.Contains(portStr, ":") {
 		return strings.Split(portStr, ":")
 	}
 	return []string{}
