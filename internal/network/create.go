@@ -19,6 +19,10 @@ func Create(name, subnet string) {
 	if err := createBridge(name, gateway); err != nil {
 		util.LogAndExit("failed to create bridge", err)
 	}
+	if err := setHostSNAT(name, gateway); err != nil {
+		util.LogAndExit("failed to set host snat", err)
+	}
+
 	os.MkdirAll(stroageRootDir, 0755)
 	f, err := os.OpenFile(filepath.Join(stroageRootDir, name+".json"), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {

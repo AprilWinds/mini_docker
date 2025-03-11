@@ -1,53 +1,113 @@
 package network
 
 import (
-	"errors"
 	"fmt"
+	"mini_docker/internal/util"
 
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 )
 
-func createBridge(name string, gateway string) error {
-	_, err := netlink.LinkByName(name)
-	if err == nil {
-		return errors.New("bridge already exists: " + name)
+type driverType string
+
+func createBridge(name string, rawIp string) error {
+	if _, err := netlink.LinkByName(name); err == nil {
+		return fmt.Errorf("driver already exists: %s", name)
 	}
 
-	la := netlink.NewLinkAttrs()
-	la.Name = name
-	br := &netlink.Bridge{LinkAttrs: la}
-
-	// 创建桥接设备
-	if err := netlink.LinkAdd(br); err != nil {
-		return fmt.Errorf("failed to create bridge: %w", err)
+	bridge := &netlink.Bridge{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: name,
+		},
 	}
 
-	// 解析地址
-	addr, err := netlink.ParseAddr(gateway)
-	if err != nil {
-		return fmt.Errorf("failed to parse subnet: %w", err)
+	if err := netlink.LinkAdd(bridge); err != nil {
+		return fmt.Errorf("failed to add link: %w", err)
 	}
 
-	// 添加地址
-	if err := netlink.AddrAdd(br, addr); err != nil {
-		return fmt.Errorf("failed to add subnet to bridge: %w", err)
+	if err := setLinkIP(bridge, rawIp); err != nil {
+		return fmt.Errorf("failed to setup IP: %w", err)
 	}
 
-	// 设置桥接设备为启动状态
-	if err := netlink.LinkSetUp(br); err != nil {
-		return fmt.Errorf("failed to set bridge up: %w", err)
+	if err := netlink.LinkSetUp(bridge); err != nil {
+		return fmt.Errorf("failed to set link up: %w", err)
 	}
 
 	return nil
 }
 
-func deleteDriver(name string) error {
-	br, err := netlink.LinkByName(name)
-	if err != nil {
-		return fmt.Errorf("failed to get bridge: %w", err)
+func createVeth(name string) (peerName string, err error) {
+	if _, err := netlink.LinkByName(name); err == nil {
+		return "", fmt.Errorf("driver already exists: %s", name)
 	}
-	if err := netlink.LinkDel(br); err != nil {
-		return fmt.Errorf("failed to delete bridge: %w", err)
+
+	veth := &netlink.Veth{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: name,
+		},
+		PeerName: util.ReverseStr(name),
+	}
+
+	if err := netlink.LinkAdd(veth); err != nil {
+		return "", fmt.Errorf("failed to add link: %w", err)
+	}
+
+	if err := netlink.LinkSetUp(veth); err != nil {
+		return "", fmt.Errorf("failed to set link up: %w", err)
+	}
+
+	return veth.PeerName, nil
+}
+
+func setLinkIP(link netlink.Link, rawIp string) error {
+	addr, err := netlink.ParseAddr(rawIp)
+	if err != nil {
+		return fmt.Errorf("failed to parse address: %w", err)
+	}
+
+	err = netlink.AddrAdd(link, addr)
+	if err != nil {
+		return fmt.Errorf("failed to add address: %w", err)
+	}
+
+	return nil
+}
+
+func connectBridge(bridgeName string, vethName string) error {
+	bridge, err := netlink.LinkByName(bridgeName)
+	if err != nil {
+		return fmt.Errorf("failed to get bridge by name: %w", err)
+	}
+
+	veth, err := netlink.LinkByName(vethName)
+	if err != nil {
+		return fmt.Errorf("failed to get veth by name: %w", err)
+	}
+
+	if err := netlink.LinkSetMaster(veth, bridge); err != nil {
+		return fmt.Errorf("failed to set master: %w", err)
+	}
+
+	if err := netlink.LinkSetUp(veth); err != nil {
+		return fmt.Errorf("failed to setup peer veth: %w", err)
+	}
+
+	return nil
+}
+
+func movePeerToNS(vethName string, ns netns.NsHandle, rawIp string) error {
+	peerVeth, err := netlink.LinkByName(vethName)
+	if err != nil {
+		return fmt.Errorf("failed to get peer veth: %w", err)
+	}
+	if err := setLinkIP(peerVeth, rawIp); err != nil {
+		return fmt.Errorf("failed to setup IP: %w", err)
+	}
+	if err = netlink.LinkSetUp(peerVeth); err != nil {
+		return fmt.Errorf("failed to set peer veth up: %w", err)
+	}
+	if err = netlink.LinkSetNsFd(peerVeth, int(ns)); err != nil {
+		return fmt.Errorf("failed to set peer veth to ns: %w", err)
 	}
 	return nil
 }
