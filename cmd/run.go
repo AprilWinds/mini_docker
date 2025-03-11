@@ -40,6 +40,10 @@ var Run = &cli.Command{
 			Name:  "e",
 			Usage: "environment variables, eg: -e key=value",
 		},
+		&cli.StringFlag{
+			Name:  "p",
+			Usage: "port mapping, eg: -p 8080:80",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		if len(c.Args().Slice()) < 2 {
@@ -50,10 +54,11 @@ var Run = &cli.Command{
 		setting := &container.Setting{
 			ImageName: c.Args().Get(0),
 			Name:      c.String("name"),
-			Env:       parseEnv(c),
 			It:        c.Bool("it"),
-			Volume:    parseVolume(c),
 			CMD:       c.Args().Slice()[1:],
+			Volume:    parseVolume(c),
+			Env:       parseEnv(c),
+			Port:      parsePort(c),
 			CgroupCfg: parseCgroup(c),
 		}
 		slog.Info("run container", "setting", setting)
@@ -109,4 +114,12 @@ func parseEnv(c *cli.Context) []string {
 		return envs
 	}
 	return nil
+}
+
+func parsePort(c *cli.Context) []string {
+	portStr := c.String("p")
+	if portStr != "" && !strings.Contains(portStr, ":") {
+		return strings.Split(portStr, ":")
+	}
+	return []string{}
 }
