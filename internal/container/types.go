@@ -22,6 +22,7 @@ type Setting struct {
 	It        bool           `json:"it"`
 	CMD       []string       `json:"cmd"`
 	Volume    []string       `json:"volume"`
-	CgroupCfg *cgroup.Config `json:"cgroup_cfg"`
 	Env       []string       `json:"env"`
+	Port      []string       `json:"port"`
+	CgroupCfg *cgroup.Config `json:"cgroup_cfg"`
 }
