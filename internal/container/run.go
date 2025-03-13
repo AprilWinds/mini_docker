@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"mini_docker/internal/cgroup"
 	"mini_docker/internal/fs"
+	"mini_docker/internal/network"
 	"mini_docker/internal/util"
 	"os"
 	"os/exec"
@@ -91,12 +92,14 @@ func Run(s *Setting) {
 	c.setupOverlayFS()
 	c.loadImage()
 	c.startChild()
-	c.saveMetadata()
 
 	cg := cgroup.New(s.CgroupCfg)
 	if err := cg.Apply(c.PId); err != nil {
 		util.LogAndExit("apply cgroup failed:", err)
 	}
+	network.Apply(c.PId, c.Setting.Network, c.Setting.PortMapping)
+
+	c.saveMetadata()
 
 	if c.Setting.It {
 		c.child.Wait()
