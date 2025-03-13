@@ -37,8 +37,7 @@ func Create(name, subnet string) {
 		Gateway: gateway,
 		IPM:     ipMgr,
 	}
-	os.MkdirAll(filepath.Join(stroageRootDir, name), 0755)
-	f, err := os.OpenFile(filepath.Join(stroageRootDir, name, ".json"), os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(stroageRootDir, name+".json"), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		util.LogAndExit("failed to create network metadata file", err)
 	}
@@ -46,8 +45,8 @@ func Create(name, subnet string) {
 	json.NewEncoder(f).Encode(n)
 }
 
-func getNetwork(name string) (*Network, error) {
-	f, err := os.Open(filepath.Join(stroageRootDir, name, ".json"))
+func getNetwork(networkName string) (*Network, error) {
+	f, err := os.Open(filepath.Join(stroageRootDir, networkName+".json"))
 	if err != nil {
 		return nil, err
 	}

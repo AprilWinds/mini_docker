@@ -5,6 +5,7 @@ import (
 	"mini_docker/internal/util"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 )
 
@@ -15,14 +16,15 @@ func LS() {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
-	fmt.Fprintln(w, "ID\tNAME\tSUBNET\tGATEWAY\tDRIVER")
+	fmt.Fprintln(w, "NAME\tSUBNET\tGATEWAY\tDRIVER")
 	for _, file := range files {
-		n, err := getNetwork(file.Name())
+		netWorkName := strings.TrimSuffix(file.Name(), ".json")
+		n, err := getNetwork(netWorkName)
 		if err != nil {
 			os.RemoveAll(filepath.Join(stroageRootDir, file.Name()))
 			continue
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", file.Name(), n.Name, n.Subnet, n.Gateway, n.Driver)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", n.Name, n.Subnet, n.Gateway, n.Driver)
 	}
 	w.Flush()
 }
