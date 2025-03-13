@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"mini_docker/internal/util"
 	"os"
 	"path/filepath"
@@ -13,21 +14,26 @@ func Create(name, subnet string) {
 	}
 
 	os.MkdirAll(stroageRootDir, 0755)
+	if _, err := craeteNetwork(name, subnet); err != nil {
+		util.LogAndExit("failed to create network", err)
+	}
+}
 
+func craeteNetwork(name, subnet string) (*Network, error) {
 	ipMgr, err := NewIPMgr(subnet)
 	if err != nil {
-		util.LogAndExit("failed to create ip manager", err)
+		return nil, fmt.Errorf("failed to create ip manager: %w", err)
 	}
 	gateway, err := ipMgr.allocate()
 	if err != nil {
-		util.LogAndExit("failed to allocate ip", err)
+		return nil, fmt.Errorf("failed to allocate ip: %w", err)
 	}
 
 	if err := createBridge(name, gateway); err != nil {
-		util.LogAndExit("failed to create bridge", err)
+		return nil, fmt.Errorf("failed to create bridge: %w", err)
 	}
 	if err := setHostSNAT(name, gateway); err != nil {
-		util.LogAndExit("failed to set host snat", err)
+		return nil, fmt.Errorf("failed to set host snat: %w", err)
 	}
 
 	n := Network{
@@ -39,10 +45,12 @@ func Create(name, subnet string) {
 	}
 	f, err := os.OpenFile(filepath.Join(stroageRootDir, name+".json"), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		util.LogAndExit("failed to create network metadata file", err)
+		deleteHostSNAT(name, gateway)
+		return nil, fmt.Errorf("failed to create network metadata file: %w", err)
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(n)
+	return &n, nil
 }
 
 func getNetwork(networkName string) (*Network, error) {

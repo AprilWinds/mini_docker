@@ -17,12 +17,13 @@ type container struct {
 }
 
 type Setting struct {
-	ImageName string         `json:"image_name"`
-	Name      string         `json:"name"`
-	It        bool           `json:"it"`
-	CMD       []string       `json:"cmd"`
-	Volume    []string       `json:"volume"`
-	Env       []string       `json:"env"`
-	Port      []string       `json:"port"`
-	CgroupCfg *cgroup.Config `json:"cgroup_cfg"`
+	ImageName   string         `json:"image_name"`
+	Name        string         `json:"name"`
+	It          bool           `json:"it"`
+	CMD         []string       `json:"cmd"`
+	Volume      []string       `json:"volume"`
+	Env         []string       `json:"env"`
+	PortMapping []string       `json:"port_mapping"`
+	CgroupCfg   *cgroup.Config `json:"cgroup_cfg"`
+	Network     string         `json:"network"`
 }

@@ -44,6 +44,12 @@ var Run = &cli.Command{
 			Name:  "p",
 			Usage: "port mapping, eg: -p 8080:80",
 		},
+		&cli.StringFlag{
+			Name:    "n",
+			Aliases: []string{"network"},
+			Usage:   "network, eg: -n mini_docker0",
+			Value:   "mini_docker0",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		if len(c.Args().Slice()) < 2 {
@@ -52,14 +58,15 @@ var Run = &cli.Command{
 		}
 
 		setting := &container.Setting{
-			ImageName: c.Args().Get(0),
-			Name:      c.String("name"),
-			It:        c.Bool("it"),
-			CMD:       c.Args().Slice()[1:],
-			Volume:    parseVolume(c),
-			Env:       parseEnv(c),
-			Port:      parsePort(c),
-			CgroupCfg: parseCgroup(c),
+			ImageName:   c.Args().Get(0),
+			Name:        c.String("name"),
+			It:          c.Bool("it"),
+			CMD:         c.Args().Slice()[1:],
+			Volume:      parseVolume(c),
+			Env:         parseEnv(c),
+			PortMapping: parsePort(c),
+			CgroupCfg:   parseCgroup(c),
+			Network:     c.String("network"),
 		}
 		slog.Info("run container", "setting", setting)
 		container.Run(setting)

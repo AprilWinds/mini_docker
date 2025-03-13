@@ -10,7 +10,10 @@ func Apply(pid int, networkName string, mappingPort []string) {
 
 	n, err := getNetwork(networkName)
 	if err != nil {
-		util.LogAndExit("failed to get network", err)
+		n, err = craeteNetwork(networkName, "192.168.6.0/24")
+		if err != nil {
+			util.LogAndExit("failed to create network", err)
+		}
 	}
 
 	vethName := util.GetRandomStr()
