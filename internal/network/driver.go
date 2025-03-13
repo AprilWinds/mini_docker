@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"mini_docker/internal/util"
+	"net"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -22,15 +23,15 @@ func createBridge(name string, rawIp string) error {
 	}
 
 	if err := netlink.LinkAdd(bridge); err != nil {
-		return fmt.Errorf("failed to add link: %w", err)
+		return err
 	}
 
 	if err := setLinkIP(bridge, rawIp); err != nil {
-		return fmt.Errorf("failed to setup IP: %w", err)
+		return err
 	}
 
 	if err := netlink.LinkSetUp(bridge); err != nil {
-		return fmt.Errorf("failed to set link up: %w", err)
+		return err
 	}
 
 	return nil
@@ -65,12 +66,7 @@ func setLinkIP(link netlink.Link, rawIp string) error {
 		return err
 	}
 
-	err = netlink.AddrAdd(link, addr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return netlink.AddrAdd(link, addr)
 }
 
 func connectBridge(bridgeName string, vethName string) error {
@@ -98,24 +94,37 @@ func connectBridge(bridgeName string, vethName string) error {
 func setPeerIP(vethName string, rawIp string) error {
 	peerVeth, err := netlink.LinkByName(vethName)
 	if err != nil {
-		return fmt.Errorf("failed to get peer veth: %w", err)
+		return err
 	}
+
 	if err := setLinkIP(peerVeth, rawIp); err != nil {
-		return fmt.Errorf("failed to setup IP: %w", err)
+		return err
 	}
-	if err = netlink.LinkSetUp(peerVeth); err != nil {
-		return fmt.Errorf("failed to set peer veth up: %w", err)
-	}
-	return nil
+
+	return netlink.LinkSetUp(peerVeth)
 }
 
 func movePeerToNS(vethName string, ns netns.NsHandle) error {
 	peerVeth, err := netlink.LinkByName(vethName)
+
 	if err != nil {
-		return fmt.Errorf("failed to get peer veth: %w", err)
+		return err
 	}
-	if err = netlink.LinkSetNsFd(peerVeth, int(ns)); err != nil {
-		return fmt.Errorf("failed to set peer veth to ns: %w", err)
+
+	return netlink.LinkSetNsFd(peerVeth, int(ns))
+}
+
+func setRoute(vethName string, rawIp string) error {
+	peerVeth, err := netlink.LinkByName(vethName)
+	if err != nil {
+		return err
 	}
-	return nil
+	_, cidr, _ := net.ParseCIDR("0.0.0.0/0")
+	addr, err := netlink.ParseAddr(rawIp)
+	defaultRoute := &netlink.Route{
+		LinkIndex: peerVeth.Attrs().Index,
+		Gw:        addr.IP,
+		Dst:       cidr,
+	}
+	return netlink.RouteAdd(defaultRoute)
 }

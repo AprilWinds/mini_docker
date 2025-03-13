@@ -21,14 +21,6 @@ func Apply(pid int, networkName string, mappingPort []string) {
 	if err := connectBridge(networkName, vethName); err != nil {
 		util.LogAndExit("failed to connect bridge", err)
 	}
-	ip, err := n.IPM.allocate()
-	if err != nil {
-		util.LogAndExit("failed to allocate ip", err)
-	}
-	if err := setPeerIP(peerVethName, ip); err != nil {
-		util.LogAndExit("failed to set peer ip", err)
-	}
-
 	cns, err := netns.GetFromPid(pid)
 	if err != nil {
 		util.LogAndExit("failed to get container netns", err)
@@ -42,11 +34,18 @@ func Apply(pid int, networkName string, mappingPort []string) {
 		util.LogAndExit("failed to get host netns", err)
 	}
 	defer netns.Set(ons)
-
 	if err := netns.Set(cns); err != nil {
 		util.LogAndExit("failed to set container netns", err)
 	}
-	if err := setContainerMapping(mappingPort[0], mappingPort[1]); err != nil {
-		util.LogAndExit("failed to set container mapping", err)
+
+	ip, err := n.IPM.allocate()
+	if err != nil {
+		util.LogAndExit("failed to allocate ip", err)
+	}
+	if err := setPeerIP(peerVethName, ip); err != nil {
+		util.LogAndExit("failed to set peer ip", err)
+	}
+	if err := setRoute(peerVethName, n.Gateway); err != nil {
+		util.LogAndExit("failed to set route", err)
 	}
 }
