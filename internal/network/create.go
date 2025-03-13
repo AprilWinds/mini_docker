@@ -13,13 +13,14 @@ func Create(name, subnet string) {
 		util.LogAndExit("network already exists", nil)
 	}
 
-	os.MkdirAll(stroageRootDir, 0755)
 	if _, err := craeteNetwork(name, subnet); err != nil {
 		util.LogAndExit("failed to create network", err)
 	}
 }
 
 func craeteNetwork(name, subnet string) (*Network, error) {
+	os.MkdirAll(stroageRootDir, 0755)
+
 	ipMgr, err := NewIPMgr(subnet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ip manager: %w", err)
@@ -32,9 +33,10 @@ func craeteNetwork(name, subnet string) (*Network, error) {
 	if err := createBridge(name, gateway); err != nil {
 		return nil, fmt.Errorf("failed to create bridge: %w", err)
 	}
-	if err := setHostSNAT(name, gateway); err != nil {
+	if err := setSNAT(subnet); err != nil {
 		return nil, fmt.Errorf("failed to set host snat: %w", err)
 	}
+	os.MkdirAll(stroageRootDir, 0755)
 
 	n := Network{
 		Name:    name,
@@ -45,7 +47,7 @@ func craeteNetwork(name, subnet string) (*Network, error) {
 	}
 	f, err := os.OpenFile(filepath.Join(stroageRootDir, name+".json"), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		deleteHostSNAT(name, gateway)
+		deleteSNAT(subnet)
 		return nil, fmt.Errorf("failed to create network metadata file: %w", err)
 	}
 	defer f.Close()
