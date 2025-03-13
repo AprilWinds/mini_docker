@@ -8,6 +8,11 @@ import (
 
 func Apply(pid int, networkName string, mappingPort []string) {
 
+	n, err := getNetwork(networkName)
+	if err != nil {
+		util.LogAndExit("failed to get network", err)
+	}
+
 	vethName := util.GetRandomStr()
 	peerVethName, err := createVeth(vethName)
 	if err != nil {
@@ -16,24 +21,31 @@ func Apply(pid int, networkName string, mappingPort []string) {
 	if err := connectBridge(networkName, vethName); err != nil {
 		util.LogAndExit("failed to connect bridge", err)
 	}
+	ip, err := n.IPM.allocate()
+	if err != nil {
+		util.LogAndExit("failed to allocate ip", err)
+	}
+	if err := setPeerIP(peerVethName, ip); err != nil {
+		util.LogAndExit("failed to set peer ip", err)
+	}
+
+	cns, err := netns.GetFromPid(pid)
+	if err != nil {
+		util.LogAndExit("failed to get container netns", err)
+	}
+	if err := movePeerToNS(peerVethName, cns); err != nil {
+		util.LogAndExit("failed to move peer veth to container netns", err)
+	}
 
 	ons, err := netns.Get()
 	if err != nil {
 		util.LogAndExit("failed to get host netns", err)
 	}
-	cns, err := netns.GetFromPid(pid)
-	if err != nil {
-		util.LogAndExit("failed to get container netns", err)
-	}
-
-	if err := movePeerToNS(peerVethName, cns, "192.168.1.5/24"); err != nil {
-		util.LogAndExit("failed to move peer veth to container netns", err)
-	}
+	defer netns.Set(ons)
 
 	if err := netns.Set(cns); err != nil {
 		util.LogAndExit("failed to set container netns", err)
 	}
-	defer netns.Set(ons)
 	if err := setContainerMapping(mappingPort[0], mappingPort[1]); err != nil {
 		util.LogAndExit("failed to set container mapping", err)
 	}

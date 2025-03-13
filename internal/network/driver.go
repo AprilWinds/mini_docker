@@ -49,11 +49,11 @@ func createVeth(name string) (peerName string, err error) {
 	}
 
 	if err := netlink.LinkAdd(veth); err != nil {
-		return "", fmt.Errorf("failed to add link: %w", err)
+		return "", err
 	}
 
 	if err := netlink.LinkSetUp(veth); err != nil {
-		return "", fmt.Errorf("failed to set link up: %w", err)
+		return "", err
 	}
 
 	return veth.PeerName, nil
@@ -62,12 +62,12 @@ func createVeth(name string) (peerName string, err error) {
 func setLinkIP(link netlink.Link, rawIp string) error {
 	addr, err := netlink.ParseAddr(rawIp)
 	if err != nil {
-		return fmt.Errorf("failed to parse address: %w", err)
+		return err
 	}
 
 	err = netlink.AddrAdd(link, addr)
 	if err != nil {
-		return fmt.Errorf("failed to add address: %w", err)
+		return err
 	}
 
 	return nil
@@ -76,26 +76,26 @@ func setLinkIP(link netlink.Link, rawIp string) error {
 func connectBridge(bridgeName string, vethName string) error {
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
-		return fmt.Errorf("failed to get bridge by name: %w", err)
+		return err
 	}
 
 	veth, err := netlink.LinkByName(vethName)
 	if err != nil {
-		return fmt.Errorf("failed to get veth by name: %w", err)
+		return err
 	}
 
 	if err := netlink.LinkSetMaster(veth, bridge); err != nil {
-		return fmt.Errorf("failed to set master: %w", err)
+		return err
 	}
 
 	if err := netlink.LinkSetUp(veth); err != nil {
-		return fmt.Errorf("failed to setup peer veth: %w", err)
+		return err
 	}
 
 	return nil
 }
 
-func movePeerToNS(vethName string, ns netns.NsHandle, rawIp string) error {
+func setPeerIP(vethName string, rawIp string) error {
 	peerVeth, err := netlink.LinkByName(vethName)
 	if err != nil {
 		return fmt.Errorf("failed to get peer veth: %w", err)
@@ -105,6 +105,14 @@ func movePeerToNS(vethName string, ns netns.NsHandle, rawIp string) error {
 	}
 	if err = netlink.LinkSetUp(peerVeth); err != nil {
 		return fmt.Errorf("failed to set peer veth up: %w", err)
+	}
+	return nil
+}
+
+func movePeerToNS(vethName string, ns netns.NsHandle) error {
+	peerVeth, err := netlink.LinkByName(vethName)
+	if err != nil {
+		return fmt.Errorf("failed to get peer veth: %w", err)
 	}
 	if err = netlink.LinkSetNsFd(peerVeth, int(ns)); err != nil {
 		return fmt.Errorf("failed to set peer veth to ns: %w", err)
