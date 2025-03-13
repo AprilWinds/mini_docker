@@ -15,17 +15,38 @@ func execIptablesCMD(args string) error {
 	return nil
 }
 
-func setHostSNAT(bridgeName string, rawIp string) error {
-	args := fmt.Sprintf("-t nat -A POSTROUTING -s %s -o %s -j MASQUERADE", rawIp, bridgeName)
+func setSNAT(rawIp string) error {
+	args := fmt.Sprintf("-t nat -A POSTROUTING -s %s -o eth0 -j MASQUERADE", rawIp)
 	return execIptablesCMD(args)
 }
 
-func deleteHostSNAT(bridgeName string, rawIp string) error {
-	args := fmt.Sprintf("-t nat -D POSTROUTING -s %s -o %s -j MASQUERADE", rawIp, bridgeName)
+func deleteSNAT(rawIp string) error {
+	args := fmt.Sprintf("-t nat -D POSTROUTING -s %s -o eth0 -j MASQUERADE", rawIp)
 	return execIptablesCMD(args)
 }
 
-func setContainerMapping(srcIp string, dstIp string) error {
-	args := fmt.Sprintf("-t nat -A PREROUTING -d %s -j DNAT --to-destination %s", srcIp, dstIp)
-	return execIptablesCMD(args)
+func setDNAT(srcPort string, destIp string, destPort string) error {
+	args := fmt.Sprintf("-t nat -A PREROUTING -p tcp  --dport %s -j DNAT --to-destination %s:%s", srcPort, destIp, destPort)
+	if err := execIptablesCMD(args); err != nil {
+		return fmt.Errorf("failed to set iptables: %w", err)
+	}
+	// 本机进程走的output链
+	args = fmt.Sprintf("-t nat -A OUTPUT -p tcp  --dport %s -j DNAT --to-destination %s:%s", srcPort, destIp, destPort)
+	if err := execIptablesCMD(args); err != nil {
+		return fmt.Errorf("failed to set iptables: %w", err)
+	}
+	return nil
+}
+
+func deleteDNAT(srcPort string, destIp string, destPort string) error {
+	args := fmt.Sprintf("-t nat -D PREROUTING -p tcp  --dport %s -j DNAT --to-destination %s:%s", srcPort, destIp, destPort)
+	if err := execIptablesCMD(args); err != nil {
+		return fmt.Errorf("failed to set iptables: %w", err)
+	}
+
+	args = fmt.Sprintf("-t nat -D OUTPUT -p tcp  --dport %s -j DNAT --to-destination %s:%s", srcPort, destIp, destPort)
+	if err := execIptablesCMD(args); err != nil {
+		return fmt.Errorf("failed to set iptables: %w", err)
+	}
+	return nil
 }
