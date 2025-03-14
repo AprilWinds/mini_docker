@@ -6,6 +6,8 @@ import (
 	"mini_docker/internal/util"
 	"os"
 	"path/filepath"
+
+	"github.com/vishvananda/netlink"
 )
 
 func Create(name, subnet string) {
@@ -36,6 +38,9 @@ func craeteNetwork(name, subnet string) (*Network, error) {
 	if err := setSNAT(subnet); err != nil {
 		return nil, fmt.Errorf("failed to set host snat: %w", err)
 	}
+	if err := setForward(name); err != nil {
+		return nil, fmt.Errorf("failed to set forward: %w", err)
+	}
 	os.MkdirAll(stroageRootDir, 0755)
 
 	n := Network{
@@ -48,6 +53,7 @@ func craeteNetwork(name, subnet string) (*Network, error) {
 	f, err := os.OpenFile(filepath.Join(stroageRootDir, name+".json"), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		deleteSNAT(subnet)
+		deleteForward(name)
 		return nil, fmt.Errorf("failed to create network metadata file: %w", err)
 	}
 	defer f.Close()
@@ -63,6 +69,11 @@ func getNetwork(networkName string) (*Network, error) {
 	defer f.Close()
 	var n Network
 	if err := json.NewDecoder(f).Decode(&n); err != nil {
+		return nil, err
+	}
+	_, err = netlink.LinkByName(n.Name)
+	if err != nil {
+		os.RemoveAll(filepath.Join(stroageRootDir, networkName+".json"))
 		return nil, err
 	}
 	return &n, nil
