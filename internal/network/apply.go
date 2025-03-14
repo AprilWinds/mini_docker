@@ -17,8 +17,8 @@ func Apply(pid int, networkName string, mappingPort []string) {
 	}
 
 	vethName := util.GetRandomStr()
-	peerVethName, err := createVeth(vethName)
-	if err != nil {
+	peerVethName := "P" + vethName
+	if err := createVeth(vethName); err != nil {
 		util.LogAndExit("failed to create veth", err)
 	}
 	if err := connectBridge(networkName, vethName); err != nil {
