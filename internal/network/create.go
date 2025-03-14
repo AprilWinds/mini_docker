@@ -22,7 +22,12 @@ func Create(name, subnet string) {
 
 func craeteNetwork(name, subnet string) (*Network, error) {
 	os.MkdirAll(stroageRootDir, 0755)
+	n, err := getNetwork(name)
+	if err == nil {
+		return n, nil
+	}
 
+	os.RemoveAll(filepath.Join(stroageRootDir, name+".json"))
 	ipMgr, err := NewIPMgr(subnet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ip manager: %w", err)
@@ -43,7 +48,7 @@ func craeteNetwork(name, subnet string) (*Network, error) {
 	}
 	os.MkdirAll(stroageRootDir, 0755)
 
-	n := Network{
+	n = &Network{
 		Name:    name,
 		Subnet:  subnet,
 		Driver:  "bridge",
@@ -58,7 +63,7 @@ func craeteNetwork(name, subnet string) (*Network, error) {
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(n)
-	return &n, nil
+	return n, nil
 }
 
 func getNetwork(networkName string) (*Network, error) {
@@ -73,7 +78,6 @@ func getNetwork(networkName string) (*Network, error) {
 	}
 	_, err = netlink.LinkByName(n.Name)
 	if err != nil {
-		os.RemoveAll(filepath.Join(stroageRootDir, networkName+".json"))
 		return nil, err
 	}
 	return &n, nil
