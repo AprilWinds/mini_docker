@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"mini_docker/internal/util"
 	"net"
 
 	"github.com/vishvananda/netlink"
@@ -37,27 +36,23 @@ func createBridge(name string, rawIp string) error {
 	return nil
 }
 
-func createVeth(name string) (peerName string, err error) {
+func createVeth(name string) error {
 	if _, err := netlink.LinkByName(name); err == nil {
-		return "", fmt.Errorf("driver already exists: %s", name)
+		return fmt.Errorf("driver already exists: %s", name)
 	}
 
 	veth := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: name,
 		},
-		PeerName: util.ReverseStr(name),
+		PeerName: "P" + name,
 	}
 
 	if err := netlink.LinkAdd(veth); err != nil {
-		return "", err
+		return err
 	}
 
-	if err := netlink.LinkSetUp(veth); err != nil {
-		return "", err
-	}
-
-	return veth.PeerName, nil
+	return netlink.LinkSetUp(veth)
 }
 
 func setLinkIP(link netlink.Link, rawIp string) error {
