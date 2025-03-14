@@ -115,9 +115,10 @@ func setRoute(vethName string, rawIp string) error {
 		return err
 	}
 	_, cidr, _ := net.ParseCIDR("0.0.0.0/0")
+	addr, err := netlink.ParseAddr(rawIp)
 	defaultRoute := &netlink.Route{
 		LinkIndex: peerVeth.Attrs().Index,
-		Gw:        net.ParseIP(rawIp),
+		Gw:        addr.IP,
 		Dst:       cidr,
 	}
 	return netlink.RouteAdd(defaultRoute)
